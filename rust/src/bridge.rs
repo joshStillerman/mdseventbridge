@@ -215,15 +215,31 @@ fn create_udp_receiver(cfg: &BridgeConfig, mcast_cfg: &MulticastConfig) -> Resul
 fn create_udp_sender(cfg: &BridgeConfig) -> Result<UdpSocket> {
     let bind_ip = Ipv4Addr::from_str(&cfg.udp_send_bind_ip)
         .with_context(|| format!("invalid udp_send_bind_ip: {}", cfg.udp_send_bind_ip))?;
-    let udp = UdpSocket::bind(SocketAddrV4::new(bind_ip, 0))?;
+
+    let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP))?;
+    socket.set_reuse_address(true)?;
+    #[cfg(unix)]
+    {
+        let _ = socket.set_reuse_port(true);
+    }
+
+    let addr = SocketAddr::V4(SocketAddrV4::new(bind_ip, 0));
+    socket.bind(&addr.into())?;
+
+    let udp = UdpSocket::from(socket);
     udp.set_nonblocking(true)?;
     udp.set_multicast_ttl_v4(cfg.udp_ttl)?;
     udp.set_multicast_loop_v4(cfg.udp_loop)?;
+
     Ok(udp)
 }
 
 fn unix_ts_secs() -> f64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0.0, |dur| dur.as_secs_f64())
+    match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(dur) => dur.as_secs_f64(),
+        Err(_) => {
+            debug!("system time before unix epoch, clamping to 0.0");
+            0.0
+        }
+    }
 }

@@ -11,7 +11,6 @@ need_cmd() {
   }
 }
 
-need_cmd wfevent
 need_cmd setevent
 need_cmd stdbuf
 need_cmd tee
@@ -34,19 +33,6 @@ start_listener() {
   : > "logs/${side}.log"
   stdbuf -oL -eL ./listener.sh "$side" "$EVENT" | tee -a "logs/${side}.log" &
   echo $! > "pids/listener_${side}.pid"
-}
-
-wait_for() {
-  local file="$1"
-  local text="$2"
-  local timeout="${3:-5}"
-  for _ in $(seq 1 $((timeout * 10))); do
-    if grep -Fq "$text" "$file"; then
-      return 0
-    fi
-    sleep 0.1
-  done
-  return 1
 }
 
 echo "Starting listeners..."

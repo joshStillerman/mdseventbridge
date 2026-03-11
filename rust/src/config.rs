@@ -9,8 +9,8 @@ const DEFAULT_UDP_ADDRESS: &str = "224.0.0.175";
 #[command(name = "mdsevent_tcp_bridge")]
 #[command(about = "Bridge MDSplus UDP events to/from ZeroMQ TCP")]
 pub struct Cli {
-    #[arg(long, env = "MDS_BRIDGE_SITE_ID", default_value = "localhost")]
-    pub site_id: String,
+    #[arg(long, env = "MDS_BRIDGE_SITE_ID")]
+    pub site_id: Option<String>,
 
     #[arg(long, env = "MDS_BRIDGE_ID")]
     pub bridge_id: Option<String>,
@@ -86,8 +86,9 @@ impl BridgeConfig {
     #[must_use]
     pub fn from_cli(cli: Cli) -> Self {
         let default_bridge_id = format!("{}:{}", hostname_fallback(), std::process::id());
+        let default_site_id = hostname_fallback();
         Self {
-            site_id: cli.site_id,
+            site_id: cli.site_id.unwrap_or(default_site_id),
             bridge_id: cli.bridge_id.unwrap_or(default_bridge_id),
             udp_port: cli.udp_port,
             udp_address_setting: cli.udp_address_setting,

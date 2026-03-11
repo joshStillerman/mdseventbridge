@@ -55,6 +55,9 @@ impl MulticastConfig {
         Ipv4Addr::new(self.first[0], self.first[1], self.first[2], index)
     }
 
+    /// Maps an event name to a multicast address within the configured range.
+    /// Uses a stable hash of the event name bytes to ensure consistent mapping across calls.
+    /// The hash is deterministic and does not depend on insertion order or machine state.
     #[must_use]
     pub fn event_to_multicast(&self, event_name: &str) -> Ipv4Addr {
         let hash: u32 = event_name.bytes().map(u32::from).sum();

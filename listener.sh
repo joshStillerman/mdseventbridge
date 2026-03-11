@@ -19,6 +19,7 @@ case "$SIDE" in
     ;;
 esac
 
-echo "[$SIDE] wfevent '$EVENT' on ${mdsevent_address}:${mdsevent_port}"
-exec wfevent "$EVENT"
-echo "[$SIDE] GOT '$EVENT' on ${mdsevent_address}:${mdsevent_port}"
+echo "[$SIDE] listening for '$EVENT' on ${mdsevent_address}:${mdsevent_port}"
+while IFS= read -r event_data; do
+  echo "[$SIDE] GOT '$EVENT': $event_data"
+done < <(wfevent "$EVENT" -d)

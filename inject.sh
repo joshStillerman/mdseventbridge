@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SIDE="${1:?usage: listener.sh SIDE EVENT}"
-EVENT="${2:?usage: listener.sh SIDE EVENT}"
+SIDE="${1:?usage: inject.sh SIDE EVENT MSG}"
+EVENT="${2:?usage: inject.sh SIDE EVENT MSG}"
+MSG="${3:?usage: inject.sh SIDE EVENT MSG}"
 
 case "$SIDE" in
   A|C)
@@ -19,5 +20,6 @@ case "$SIDE" in
     ;;
 esac
 
-echo "[$SIDE] wfevent '$EVENT' on ${mdsevent_address}:${mdsevent_port}"
-exec setevent "$EVENT"
+echo "[$SIDE] Emitting event '$EVENT' with data: $MSG on ${mdsevent_address}:${mdsevent_port}"
+setevent "$EVENT" "$MSG"
+
