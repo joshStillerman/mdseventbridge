@@ -1,0 +1,17 @@
+# macOS
+.DS_Store
+
+# Local runtime artifacts
+logs/
+pids/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Rust
+rust/target/
+
+# Editor/IDE
+.vscode/
