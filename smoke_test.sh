@@ -35,18 +35,60 @@ start_listener() {
   echo $! > "pids/listener_${side}.pid"
 }
 
+wait_for() {
+  local file="$1"
+  local text="$2"
+  local timeout="${3:-5}"
+  for _ in $(seq 1 $((timeout * 10))); do
+    if grep -Fq "$text" "$file"; then
+      return 0
+    fi
+    sleep 0.1
+  done
+  return 1
+}
+
+ensure_listener_ready() {
+  local side="$1"
+  local pid_file="pids/listener_${side}.pid"
+  local pid=""
+
+  if [ -e "$pid_file" ]; then
+    pid="$(cat "$pid_file" 2>/dev/null || true)"
+  fi
+
+  if [ -z "${pid:-}" ] || ! kill -0 "$pid" 2>/dev/null; then
+    echo "Listener $side not running; restarting..."
+    start_listener "$side"
+  fi
+
+  if ! wait_for "logs/${side}.log" "[$side] listening for '$EVENT'" 5; then
+    echo "Listener $side did not become ready in time" >&2
+    exit 1
+  fi
+}
+
 echo "Starting listeners..."
 start_listener A
 start_listener B
 start_listener C
 start_listener D
-sleep 1
+ensure_listener_ready A
+ensure_listener_ready B
+ensure_listener_ready C
+ensure_listener_ready D
 
 echo
 echo "Injecting from A..."
 MSG_A="msg-from-A-$(date +%s%N)"
 ./inject.sh A "$EVENT" "$MSG_A" >/dev/null
 sleep 1
+
+echo "Re-waiting listeners before B injection..."
+ensure_listener_ready A
+ensure_listener_ready B
+ensure_listener_ready C
+ensure_listener_ready D
 
 echo "Injecting from B..."
 MSG_B="msg-from-B-$(date +%s%N)"
