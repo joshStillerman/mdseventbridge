@@ -1,0 +1,30 @@
+[package]
+name = "mdsevent_tcp_bridge"
+version = "0.1.0"
+edition = "2021"
+description = "UDP/TCP/UDP bridge prototype for MDSplus events"
+license = "MIT"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive", "env"] }
+ctrlc = "3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+socket2 = { version = "0.5", features = ["all"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
+uuid = { version = "1", features = ["v4"] }
+zmq = "0.10"
+
+[lints.clippy]
+all = "warn"
+pedantic = "warn"
+
+[[bin]]
+name = "mdsevent_tcp_bridge"
+path = "src/main.rs"
+
+[[bin]]
+name = "inproc_harness"
+path = "src/bin/inproc_harness.rs"
