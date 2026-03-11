@@ -1,13 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ -n "${PYTHON:-}" ]; then
-  PYTHON="$PYTHON"
-elif [ -x ".venv/bin/python" ]; then
-  PYTHON=".venv/bin/python"
-else
-  PYTHON="python3"
-fi
 BRIDGE="${BRIDGE:-./mdsevent_tcp_bridge.py}"
 
 mkdir -p logs pids
