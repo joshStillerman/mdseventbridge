@@ -25,7 +25,7 @@ for f in pids/*.pid; do
 done
 
 # AC side bridge
-stdbuf -oL -eL "$PYTHON" "$BRIDGE" \
+stdbuf -oL -eL  "$BRIDGE" \
   --site-id AC \
   --udp-address-setting 239.10.10.10 \
   --udp-port 4001 \
@@ -36,7 +36,7 @@ stdbuf -oL -eL "$PYTHON" "$BRIDGE" \
 echo $! > pids/bridge_AC.pid
 
 # BD side bridge
-stdbuf -oL -eL "$PYTHON" "$BRIDGE" \
+stdbuf -oL -eL "$BRIDGE" \
   --site-id BD \
   --udp-address-setting 239.10.10.11 \
   --udp-port 4002 \
