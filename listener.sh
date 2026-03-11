@@ -20,6 +20,4 @@ case "$SIDE" in
 esac
 
 echo "[$SIDE] listening for '$EVENT' on ${mdsevent_address}:${mdsevent_port}"
-while IFS= read -r event_data; do
-  echo "[$SIDE] GOT '$EVENT': $event_data"
-done < <(wfevent "$EVENT" -d)
+wfevent "$EVENT" -d | sed -u "s/^/[$SIDE] /"

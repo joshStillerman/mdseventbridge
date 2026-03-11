@@ -21,5 +21,12 @@ case "$SIDE" in
 esac
 
 echo "[$SIDE] Emitting event '$EVENT' with data: $MSG on ${mdsevent_address}:${mdsevent_port}"
+set +e
 setevent "$EVENT" "$MSG"
+rc=$?
+set -e
+if [ "$rc" -ne 0 ] && [ "$rc" -ne 9 ]; then
+  echo "setevent failed with exit code $rc" >&2
+  exit "$rc"
+fi
 

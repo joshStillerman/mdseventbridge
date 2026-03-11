@@ -171,6 +171,11 @@ class MdseventTcpBridge:
     def _create_udp_receiver(self) -> socket.socket:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        if hasattr(socket, "SO_REUSEPORT"):
+            try:
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+            except OSError:
+                pass
         sock.bind((self.args.udp_bind_ip, self.udp_port))
         iface = (
             socket.inet_aton(self.args.udp_interface_ip)

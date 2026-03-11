@@ -26,7 +26,7 @@ cleanup() {
     rm -f "$f"
   done
 }
-trap cleanup EXIT INT TERM
+#trap cleanup EXIT INT TERM
 
 start_listener() {
   local side="$1"

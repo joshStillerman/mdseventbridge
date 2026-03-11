@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PYTHON="${PYTHON:-python3}"
+if [ -n "${PYTHON:-}" ]; then
+  PYTHON="$PYTHON"
+elif [ -x ".venv/bin/python" ]; then
+  PYTHON=".venv/bin/python"
+else
+  PYTHON="python3"
+fi
 BRIDGE="${BRIDGE:-./mdsevent_tcp_bridge.py}"
 
 mkdir -p logs pids
@@ -19,28 +25,44 @@ for f in pids/*.pid; do
 done
 
 # AC side bridge
-stdbuf -oL -eL "$BRIDGE" \
+stdbuf -oL -eL "$PYTHON" "$BRIDGE" \
   --site-id AC \
   --udp-address-setting 239.10.10.10 \
   --udp-port 4001 \
   --pub-bind tcp://127.0.0.1:5600 \
   --sub-connect tcp://127.0.0.1:5601 \
   --log-level DEBUG \
-  > logs/bridge_AC.log 2>&1 &
+  > >(sed -u 's/^/[AC] /' > logs/bridge_AC.log) 2>&1 &
 echo $! > pids/bridge_AC.pid
 
 # BD side bridge
-stdbuf -oL -eL "$BRIDGE" \
+stdbuf -oL -eL "$PYTHON" "$BRIDGE" \
   --site-id BD \
   --udp-address-setting 239.10.10.11 \
   --udp-port 4002 \
   --pub-bind tcp://127.0.0.1:5601 \
   --sub-connect tcp://127.0.0.1:5600 \
   --log-level DEBUG \
-  > logs/bridge_BD.log 2>&1 &
+  > >(sed -u 's/^/[BD] /' > logs/bridge_BD.log) 2>&1 &
 echo $! > pids/bridge_BD.pid
 
 sleep 1
+
+check_bridge() {
+  local pid_file="$1"
+  local log_file="$2"
+  local name="$3"
+  local pid
+  pid="$(cat "$pid_file" 2>/dev/null || true)"
+  if [ -z "${pid:-}" ] || ! kill -0 "$pid" 2>/dev/null; then
+    echo "$name failed to start; recent log output:" >&2
+    tail -n 40 "$log_file" >&2 || true
+    exit 1
+  fi
+}
+
+check_bridge pids/bridge_AC.pid logs/bridge_AC.log "AC bridge"
+check_bridge pids/bridge_BD.pid logs/bridge_BD.log "BD bridge"
 
 echo "Started bridges:"
 echo "  AC bridge pid $(cat pids/bridge_AC.pid)"
