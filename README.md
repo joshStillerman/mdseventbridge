@@ -1,138 +1,80 @@
-# MDSplus UDP/TCP/UDP Event Bridge
+# MDSplus UDP/TCP Event Bridge Lab
 
-This repository contains bridge tooling for forwarding MDSplus UDP events across TCP and rebroadcasting them as UDP at remote destinations.
+This directory is a runnable local lab for forwarding MDSplus UDP events across a ZeroMQ TCP overlay and rebroadcasting them on the remote UDP multicast side.
 
-Primary bridge assets are under `testing/`:
-- `testing/mdsevent_tcp_bridge.py` (Python bridge)
-- `testing/mdsevent_tcp_overlay_harness.py` (Python no-UDP-send harness)
-- `testing/mdsevent_tcp_bridge_rust/` (Rust compiled implementation + harness)
+## What Is Here
 
-## Bridge Behavior
+- `mdsevent_tcp_bridge.py`: Python bridge implementation.
+- `mdsevent_tcp_bridge`: compiled bridge executable (Mach-O arm64 in this workspace).
+- `start_bridges.sh`: starts two bridge instances (`AC` and `BD`) and writes logs/PIDs.
+- `listener.sh`: listens for one event on side `A|B|C|D` using `wfevent`.
+- `inject.sh`: injects one event on side `A|B|C|D` using `setevent`.
+- `smoke_test.sh`: starts four listeners, injects from A and B, and tails/records output.
+- `stop_lab.sh`: stops bridge/listener processes from `pids/*.pid`.
+- `rust/`: Rust source crate for the bridge and harness/tests.
 
-Each bridge process can do both directions:
-1. `UDP -> TCP overlay publish`
-2. `TCP overlay subscribe -> UDP rebroadcast`
+## Topology Used By Scripts
 
-Overlay transport: ZeroMQ PUB/SUB over TCP.
+- A/C side multicast: `239.10.10.10:4001`
+- B/D side multicast: `239.10.10.11:4002`
+- AC bridge:
+  - `--pub-bind tcp://127.0.0.1:5600`
+  - `--sub-connect tcp://127.0.0.1:5601`
+- BD bridge:
+  - `--pub-bind tcp://127.0.0.1:5601`
+  - `--sub-connect tcp://127.0.0.1:5600`
 
-## Quick Start (Python)
+## Requirements
 
-Run from repo root (`/Users/jas/mdsplus/mdsshr`):
+- MDSplus CLI tools on `PATH`: `setevent`, `wfevent`
+- For Python bridge: Python 3 + `pyzmq`
+- For Rust development: Rust toolchain (`cargo`)
 
-### Hub
+## Quick Start
+
+1. Start the two bridge processes:
+
 ```bash
-python3 testing/mdsevent_tcp_bridge.py \
-  --site-id hub \
-  --bridge-id hub-1 \
-  --udp-port 4000 \
-  --udp-address-setting 239.10.10.10 \
-  --pub-bind tcp://0.0.0.0:5600 \
-  --sub-connect tcp://spoke1-host:5600 \
-  --sub-connect tcp://spoke2-host:5600 \
-  --forward-remote \
-  --log-level DEBUG
+./start_bridges.sh
 ```
 
-### Spoke
+2. Run the smoke test (starts listeners, injects events):
+
 ```bash
-python3 testing/mdsevent_tcp_bridge.py \
-  --site-id spoke1 \
-  --bridge-id spoke1-1 \
-  --udp-port 4000 \
-  --udp-address-setting 239.10.10.10 \
-  --pub-bind tcp://0.0.0.0:5600 \
-  --sub-connect tcp://hub-host:5600 \
-  --log-level DEBUG
+./smoke_test.sh
 ```
 
-## One-Node Multi-Port Test
-
-Use unique values per instance:
-- `--udp-port`
-- `--pub-bind`
-- `--bridge-id`
+3. Stop all lab processes:
 
 ```bash
-# AC
-python3 testing/mdsevent_tcp_bridge.py \
-  --site-id AC \
-  --bridge-id AC-1 \
-  --udp-port 4000 \
-  --pub-bind tcp://127.0.0.1:5600 \
-  --sub-connect tcp://127.0.0.1:5601 \
-  --forward-remote \
-  --log-level DEBUG
-
-# BD
-python3 testing/mdsevent_tcp_bridge.py \
-  --site-id BD \
-  --bridge-id BD-1 \
-  --udp-port 4001 \
-  --pub-bind tcp://127.0.0.1:5601 \
-  --sub-connect tcp://127.0.0.1:5600 \
-  --forward-remote \
-  --log-level DEBUG
+./stop_lab.sh
 ```
 
-## Harness (No UDP Send)
+## Use Rust Binary Instead of Python Script
 
-Python:
+`start_bridges.sh` defaults to `./mdsevent_tcp_bridge.py`.  
+To use the compiled executable:
+
 ```bash
-python3 testing/mdsevent_tcp_overlay_harness.py --transport inproc --messages 3
+BRIDGE=./mdsevent_tcp_bridge ./start_bridges.sh
 ```
 
-Rust:
-```bash
-cd testing/mdsevent_tcp_bridge_rust
-cargo run --bin inproc_harness -- --transport inproc --messages 3
-```
+Do not run the binary with `python3`; execute it directly.
 
-## Rust Build/Test
+## Logs and PIDs
+
+- Bridge logs:
+  - `logs/bridge_AC.log`
+  - `logs/bridge_BD.log`
+- Listener logs (smoke test):
+  - `logs/A.log`, `logs/B.log`, `logs/C.log`, `logs/D.log`
+- PID files:
+  - `pids/*.pid`
+
+## Rust Development
 
 ```bash
-cd testing/mdsevent_tcp_bridge_rust
+cd rust
 cargo check
 cargo test
 ```
-
-## Loop Prevention
-
-Overlay metadata fields:
-- `id`
-- `origin`
-- `sender`
-- `sender_udp_port`
-- `hops`
-
-Current protections:
-- dedupe cache by `id`
-- ignore frames where `sender == this bridge_id`
-- drop UDP ingress from known bridge sender ports
-- optional hop limit (`--max-hops`)
-
-## Troubleshooting
-
-### `SyntaxError: Non-UTF-8 code ...`
-
-This means a compiled binary is being launched with Python.
-
-Wrong:
-```bash
-python3 /path/to/mdsevent_tcp_bridge
-```
-
-Right:
-```bash
-/path/to/mdsevent_tcp_bridge
-```
-
-Or run the Python script explicitly:
-```bash
-python3 testing/mdsevent_tcp_bridge.py
-```
-
-## More Details
-
-See:
-- `testing/README.md`
-- `docs/udp_tcp_bridge_design.md`
